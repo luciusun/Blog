@@ -82,7 +82,7 @@ tf.flags.DEFINE_string("output_dir", "/home/server109/im2txt/data/mscoco", "Outp
 
 按照官网教程，可以同时打开三个窗口，一个窗口训练，一个窗口测试，还有一个窗口使用tensorboard监控
 
-
+默认的evaluation每600秒执行一次
 
 
 
