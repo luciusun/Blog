@@ -1,0 +1,89 @@
+
+文章：Show and Tell: A Neural Image Caption Generator （http://arxiv.org/abs/1609.06647）
+摘要:简要谈谈复现这篇文章的流程
+步骤分为以下几步：
+
+
+一、Install Required Packages
+
+1.Bazel (instructions)：Bazel是一个类似于Make的编译工具，是Google为其内部软件开发的特点量身定制的工具，如今Google使用它来构建内部大多数的软件。Google认为直接用Makefile构建
+软件速度太慢，结果不可靠，所以构建了一个新的工具叫做Bazel，Bazel的规则层级更高。
+2.Natural Language Toolkit (NLTK)和  NLTK data package "punkt" (instructions)：python中自然语言处理工具包。
+
+二、准备训练数据（注意，以上所有操作均需要在Python2.7中进行，Python3会出现编码问题，tensorflow需要安装在Python2.7中，我试过了Python3无法生成可用格式
+的数据，Python2.7可以）
+
+有2种方法，我使用的是第二种方法，2h下载数据，1h预处理
+1.安装官网（https://github.com/tensorflow/models/tree/master/research/im2txt）程序下载并且打包数据
+# Location to save the MSCOCO data.
+MSCOCO_DIR="${HOME}/im2txt/data/mscoco"
+
+# Build the preprocessing script.
+cd research/im2txt
+bazel build //im2txt:download_and_preprocess_mscoco
+
+# Run the preprocessing script.
+bazel-bin/im2txt/download_and_preprocess_mscoco "${MSCOCO_DIR}"
+
+注明:我在这一步遇到了问题，运行bazel build //im2txt:download_and_preprocess_mscoco命令，编译不成功，ERROR: ...download_and_preprocess.sh is not
+executive...忙活了一晚上，就差摔电脑了......是因为被编译的文件属性为不可执行
+需要将im2txt/im2txt/data/download_and_preproces_mscoco.sh文件属于设置为可执行：chmod +x download_and_preproces_mscoco.sh，成功解决问题。然后静静
+等待程序下载好数据，并且打包成 TFRecord format 格式就好了。
+
+
+2.手动下载coco2014数据到电脑，再解压，再转换为TFRecord格式（数据下载和预处理分开的情况）
+下载完成后，需要手动解压缩。同时考虑到Google工程中的路径问题，我们需要提前建立正确的文件路径，并解压缩到其中。
+解压后数据集路径： 
+训练图像：Home/im2txt/data/mscoco/raw-data/train2014/COCO_train2014_000000000009.jpg…… 
+验证图像：Home/im2txt/data/mscoco/raw-data/val2014/COCO_val2014_000000000042.jpg…… 
+标注：Home/im2txt/data/mscoco/raw-data/annotations/captions_train2014.json + captions_val2014.json
+
+解压好数据，并存放于正确路径后，要进行数据的转换，将其转换为TFRecord格式，并存放于Home/im2txt/data/mscoco中。这一步需要我们调用
+tensorflow-models/im2txt/im2txt/data工程中文件download_and_preprocess_mscoco.sh
+
+继续TFRecord格式转换，这里有3中方法。 
+（1）根据官方文档进行，利用bazel编译，再运行。（推荐，速度比第二种方法快）
+# Location to save the MSCOCO data.
+MSCOCO_DIR="${HOME}/im2txt/data/mscoco"
+
+# Build the preprocessing script.
+cd tensorflow-models/im2txt
+bazel build //im2txt:download_and_preprocess_mscoco
+
+# Run the preprocessing script.
+bazel-bin/im2txt/download_and_preprocess_mscoco "${MSCOCO_DIR}"
+
+注意：如果出现编译不成功，并和上述1中出现的同样错误，所以我们需要将im2txt/im2txt/data/download_and_preproces_mscoco.sh文件属于设置为可执行即可
+
+（2）其实也可以直接在terminal中运行download_and_preprocess_mscoco.sh文件。
+cd tensorflow-models/im2txt/im2txt/data
+>>> bash download_and_preprocess_mscoco.sh ${HOME}/im2txt/data/mscoco
+
+（3） 手动运行build_mscoco_data.py文件。 
+不过要更改其中的数据目录，具体为：将文件中102-112行替换为：
+tf.flags.DEFINE_string("train_image_dir", "/home/server109/im2txt/data/mscoco/raw-data/train2014","Training image directory.")                       
+tf.flags.DEFINE_string("val_image_dir", "/home/server109/im2txt/data/mscoco/raw-data/val2014", "Validation image directory.")
+tf.flags.DEFINE_string("train_captions_file", "/home/server109/im2txt/data/mscoco/raw-data/annotations/captions_train2014.json",
+                       "Training captions JSON file.")
+tf.flags.DEFINE_string("val_captions_file", "/home/server109/im2txt/data/mscoco/raw-data/annotations/captions_val2014.json",
+                       "Validation captions JSON file.")
+tf.flags.DEFINE_string("output_dir", "/home/server109/im2txt/data/mscoco", "Output data directory.")
+
+
+
+当TFRecord格式转换好了时，终端会打印如下信息：...Finished processing all 20267 image-caption pairs in data set 'test'.
+..........................................................成功..........................................................
+
+3.下载CNN框架，即Google自家的Inception-v3参数，按照官网流程，无难度
+
+
+
+三、训练和监控
+
+按照官网教程，可以同时打开三个窗口，一个窗口训练，一个窗口测试，还有一个窗口使用tensorboard监控
+
+
+
+
+
+
